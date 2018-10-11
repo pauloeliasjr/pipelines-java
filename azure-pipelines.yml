@@ -1,29 +1,48 @@
-# Maven
-# Build your Java projects and run tests with Apache Maven.
-# Add steps that analyze code, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/java
+resources:
+- repo: self
+queue:
+  name: Hosted Linux Preview
+  demands: maven
 
-pool:
-  vmImage: 'Ubuntu 16.04'
-
+#Your build pipeline references an undefined variable named ‘Parameters.mavenPOMFile’. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab. See https://go.microsoft.com/fwlink/?linkid=865972
 steps:
-- task: Maven@3
+- task: SonarSource.sonarqube.15B84CA1-B62F-4A2A-A403-89B77A063157.SonarQubePrepare@4
+  displayName: 'Prepare analysis on SonarQube'
   inputs:
-    mavenPomFile: 'pom.xml'
-    mavenOptions: '-Xmx3072m'
-    javaHomeOption: 'JDKVersion'
-    jdkVersionOption: '1.10'
-    jdkArchitectureOption: 'x64'
-    publishJUnitResults: true
-    testResultsFiles: '**/TEST-*.xml'
-    goals: 'package'
+    SonarQube: 'SonarQube - Agility DevOps'
+
+    scannerMode: Other
+
+
+- task: Maven@2
+  displayName: 'Maven pom.xml'
+  inputs:
+    mavenPomFile: '$(Parameters.mavenPOMFile)'
+
+    codeCoverageToolOption: JaCoCo
+
+    sonarQubeRunAnalysis: true
+
+    sqMavenPluginVersionChoice: pom
+
+
+- task: SonarSource.sonarqube.291ed61f-1ee4-45d3-b1b0-bf822d9095ef.SonarQubePublish@4
+  displayName: 'Publish Quality Gate Result'
+
 
 - task: CopyFiles@2
+  displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
   inputs:
-    contents: '**/*.war'
-    targetFolder: '$(build.artifactStagingDirectory)'
+    SourceFolder: '$(system.defaultworkingdirectory)'
+
+    Contents: '**/*.jar'
+
+    TargetFolder: '$(build.artifactstagingdirectory)'
+
 
 - task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: drop'
   inputs:
-    artifactName: 'war'
-    pathToPublish: '$(build.artifactStagingDirectory)'
+    PathtoPublish: '$(build.artifactstagingdirectory)'
+
+
